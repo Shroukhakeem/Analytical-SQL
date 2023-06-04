@@ -1,0 +1,59 @@
+a- What is the maximum number of consecutive days a customer made purchases?
+
+
+SELECT DISTINCT cust_id, MAX(days_count) OVER (PARTITION BY cust_id) AS max_cosecutive_days
+FROM (
+  SELECT tab2.*, COUNT(*) OVER (PARTITION BY cust_id, comparing_date) AS days_count
+  FROM (
+    SELECT tab1.*, calendar_dt - ROW_NUMBER() OVER (PARTITION BY cust_id ORDER BY calendar_dt) AS comparing_date
+    FROM transactions tab1
+  ) tab2
+) 
+ORDER BY cust_id;
+
+
+
+
+b- On average, How many days/transactions does it take a customer to reach a spent threshold of 250 L.E?
+
+
+SELECT DISTINCT
+    cust_id,
+    CEIL(AVG(days_count) OVER (PARTITION BY cust_id)) AS days_to_spend_250LE
+FROM (
+    SELECT
+        tab4.*,
+        ROW_NUMBER() OVER (PARTITION BY cust_id, days_count, twofifties ORDER BY calendar_dt) AS rnk
+    FROM (
+        SELECT
+            tab3.*,
+            SUM(AMT_LE) OVER (PARTITION BY cust_id, twofifties ORDER BY calendar_dt, cust_id) AS Result,
+            CASE
+                WHEN AMT_LE > 250 THEN 1
+                ELSE COUNT(*) OVER (PARTITION BY cust_id, twofifties)
+            END AS days_count
+        FROM (
+            SELECT
+                tab2.*,
+                FLOOR(Total_Sum / 250) AS twofifties
+            FROM (
+                SELECT
+                    tab1.*,
+                    SUM(AMT_LE) OVER (PARTITION BY cust_id ORDER BY calendar_dt, cust_id) AS Total_Sum
+                FROM
+                    QUE tab1
+            ) tab2
+        ) tab3
+    ) tab4
+)
+WHERE
+    rnk = 1
+ORDER BY
+    cust_id;
+
+
+
+
+
+
+
