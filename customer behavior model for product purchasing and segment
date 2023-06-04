@@ -1,0 +1,58 @@
+Model for customers behavior for product purchasing and segment each customer based on the following groups?
+
+WITH customer_data AS (
+    SELECT DISTINCT 
+        customer_id,
+        (
+            SELECT MAX(TO_DATE(invoice_date, 'mm/dd/yy')) 
+            FROM online_retail
+        ) MAX(TO_DATE(invoice_date, 'mm/dd/yy')) OVER (PARTITION BY customer_id) AS recency,
+        COUNT(invoice_no) OVER (PARTITION BY customer_id) AS frequency,
+        SUM(unit_price) OVER (PARTITION BY customer_id)::numeric(10,2) AS monetary
+    FROM online_retail
+    WHERE customer_id != ''
+), 
+customer_scores AS (
+    SELECT 
+        customer_id, 
+        recency, 
+        frequency, 
+        monetary, 
+        ntile(5) OVER (ORDER BY recency DESC) AS Re_score,
+        ((frequency + monetary) / 2)::numeric(10) AS FM_score
+    FROM customer_data
+)
+SELECT 
+    customer_id,
+    recency,
+    frequency,
+    monetary,
+    Re_score,
+    FM_score,
+    CASE 
+        WHEN (r_score + fm_score) >= 9 THEN 'Champions'
+        WHEN (r_score = 5 AND fm_Score = 2) OR 
+             (r_score = 4 AND fm_Score = 2) OR 
+             (r_score = 3 AND fm_Score = 3) OR 
+             (r_score = 4 AND fm_Score = 3) THEN 'Potential Loyalists'
+        WHEN (r_score = 5 AND fm_Score = 3) OR 
+             (r_score = 4 AND fm_Score = 4) OR 
+             (r_score = 3 AND fm_Score = 5) OR 
+             (r_score = 3 AND fm_Score = 4) THEN 'Loyal Customers'
+        WHEN r_score = 5 AND fm_Score = 1 THEN 'Recent Customers'
+        WHEN (r_score = 4 AND fm_Score = 1) OR 
+             (r_score = 3 AND fm_Score = 1) THEN 'Promising'
+        WHEN (r_score = 3 AND fm_Score = 2) OR 
+             (r_score = 2 AND fm_Score = 3) OR 
+             (r_score = 2 AND fm_Score = 2) THEN 'Customers Needing Attention'
+        WHEN (r_score = 2 AND fm_Score = 5) OR 
+             (r_score = 2 AND fm_Score = 4) OR 
+             (r_score = 1 AND fm_Score = 3) THEN 'At Risk'
+        WHEN (r_score = 1 AND fm_Score = 5) OR 
+             (r_score = 1 AND fm_Score = 4) THEN 'Can\'t Lose Them'
+        WHEN (r_score + fm_Score) = 3 THEN 'Hibernating'
+        WHEN (r_score + fm_Score) <= 2 THEN 'Lost'
+    END AS group_Name
+FROM customer_scores
+ORDER BY monetary, customer_id DESC;
+
