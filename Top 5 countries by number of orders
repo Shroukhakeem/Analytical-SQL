@@ -1,0 +1,5 @@
+SELECT distinct country, 
+Count(invoice_no) over(partition by country ) total_orders
+From online_retail
+Order by 2 desc 
+limit 5;
