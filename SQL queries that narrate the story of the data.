@@ -1,0 +1,66 @@
+a)- Top 5 countries by number of orders 
+
+SELECT distinct country, 
+Count(invoice_no) over(partition by country ) total_orders
+From online_retail
+Order by 2 desc 
+limit 5;
+
+
+
+b)- Popular product Per country ?
+
+WITH t1 AS (
+    SELECT DISTINCT country,
+        FIRST_VALUE(stock_code) OVER (PARTITION BY country ORDER BY tot DESC) AS Top_prod
+    FROM (
+        SELECT country, stock_code, SUM(unit_price) OVER (PARTITION BY customer_id)::numeric(10,2) AS cso
+        FROM online_retail
+    ) onr
+)
+SELECT *
+FROM t1;
+
+
+
+c)- Number of orders per quarter over the years ?
+
+SELECT DISTINCT inv_date,
+    COUNT(invoice_no) OVER (PARTITION BY inv_date) AS Orders_Quarter
+    FROM (
+    SELECT invoice_no,
+        TO_CHAR(to_date(invoice_date, 'mm/dd/yy'), 'Q') AS iv_date
+    FROM online_retail
+) onr
+ORDER BY 2 DESC;
+
+
+
+d)- The country with highest sales per year ?
+
+
+WITH a AS (
+    SELECT country,
+        TO_CHAR(to_date(invoice_date, 'mm/dd/yy'), 'YYYY') AS iv_date,
+        (unit_price * quantity) AS Total_Sales
+    FROM online_retail
+)
+SELECT DISTINCT inv_date,
+    FIRST_VALUE(country) OVER (PARTITION BY inv_date ORDER BY total_sales DESC) AS heighest_sales
+FROM a;
+
+
+
+e)- Total sales per month sorted based on sales ?
+
+ SELECT DISTINCT inv_date,
+    SUM(total_sales) OVER (PARTITION BY inv_date, 'Month')::numeric(10) AS SALE_MONTHLY
+FROM (
+    SELECT TO_CHAR(to_date(invoice_date, 'mm/dd/yy'), 'Month') AS inv_date,
+        (unit_price * quantity) AS total_sales
+    FROM online_retail
+) onr
+ORDER BY SALE_MONTHLY DESC;
+
+
+
