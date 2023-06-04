@@ -29,4 +29,5 @@ the most recent purchase in the dataset).
   ### a- What is the maximum number of consecutive days a customer made purchases?
 
   ### b- On average, How many days/transactions does it take a customer to reach a spent threshold of 250 L.E?
+  
 
